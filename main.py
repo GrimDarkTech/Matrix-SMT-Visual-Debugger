@@ -295,8 +295,7 @@ class MainWindow(QMainWindow):
             container.name = geom["name"]
             
             if geom["type"] == "box":
-                mesh = pv.Cube()
-                mesh.scale(geom["half_dimentions"], inplace=True)
+                mesh = pv.Cube(x_length=geom["half_dimentions"][0] * 2, y_length=geom["half_dimentions"][1] * 2, z_length=geom["half_dimentions"][2] * 2)
             elif geom["type"] == "sphere":
                 mesh = pv.Sphere(radius=geom["radius"])
             elif geom["type"] == "capsule":
