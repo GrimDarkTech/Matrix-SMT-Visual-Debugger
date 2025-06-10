@@ -59,7 +59,6 @@ class MainWindow(QMainWindow):
 
         self.plotter.enable_terrain_style()
         self.plotter.enable_anti_aliasing()
-        self.plotter.add_axes()
         
         # Configure axes
         self.plotter.add_axes(
@@ -301,17 +300,17 @@ class MainWindow(QMainWindow):
             elif geom["type"] == "capsule":
                 cylinder = pv.Cylinder(
                     center=(0, 0, 0), 
-                    direction=(0, 0, 1), 
+                    direction=(1, 0, 0), 
                     radius=geom["radius"], 
                     height=geom["half_height"] * 2
                 )
                 sphere1 = pv.Sphere(
                     radius=geom["radius"], 
-                    center=(0, 0, geom["half_height"])
+                    center=(geom["half_height"], 0, 0)
                 )
                 sphere2 = pv.Sphere(
                     radius=geom["radius"], 
-                    center=(0, 0, -geom["half_height"])
+                    center=(-geom["half_height"], 0, 0)
                 )
                 mesh = cylinder + sphere1 + sphere2
             elif geom["type"] == "convex":
