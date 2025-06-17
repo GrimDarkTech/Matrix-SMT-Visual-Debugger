@@ -246,6 +246,12 @@ class MainWindow(QMainWindow):
         states = frame_data.get("states", [])
         for state in states:
             actor = self.objects[state["id"]].actor
+
+            if(state["instance"] == "instantiated"):
+                actor.visibility = True
+            else:
+                actor.visibility = False
+
             self.objects[state["id"]].metadata = state["metadata"]
 
             position = state["position"]
@@ -326,6 +332,8 @@ class MainWindow(QMainWindow):
             name=f"{container.name}: id[{container.id}]")
             container.actor = actor
 
+            actor.visibility = False
+            
             self.objects[container.id] = container
         
         self.update_object_list()
