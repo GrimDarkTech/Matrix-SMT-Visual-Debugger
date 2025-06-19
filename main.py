@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
 
         # Top row buttons
         button_row = QHBoxLayout()
-        self.open_button = QPushButton("Open JSON")
+        self.open_button = QPushButton("Open record")
         self.open_button.clicked.connect(self.open_animation_file)
         button_row.addWidget(self.open_button)
 
