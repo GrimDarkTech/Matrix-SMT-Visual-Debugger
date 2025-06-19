@@ -196,7 +196,7 @@ class MainWindow(QMainWindow):
     def open_animation_file(self):
         """Open a JSON animation file."""
         filepath, _ = QFileDialog.getOpenFileName(
-            self, "Open replay File", "", "JSON Files (*.json)")
+            self, "Open replay File", "", "BSON Files (*.bson)")
         if filepath:
             self.player.load_replay(filepath)
             self.progress_slider.setMaximum(len(self.player.frames) - 1)
@@ -239,7 +239,7 @@ class MainWindow(QMainWindow):
         # Update progress slider
         self.progress_slider.setValue(self.player.current_frame)
 
-        current_time = round(frame_data.get("time", 0), 5)
+        current_time = round(frame_data.get("t", 0), 5)
         self.frame_label.setText(f"Frame: {self.player.current_frame}/{self.player.number_of_frames} | Time: {current_time}s")
 
         # Apply transformations to objects
@@ -247,19 +247,22 @@ class MainWindow(QMainWindow):
         for state in states:
             actor = self.objects[state["id"]].actor
 
-            if(state["instance"] == "instantiated"):
+            if(state["i"] == "i"):
                 actor.visibility = True
             else:
                 actor.visibility = False
 
-            self.objects[state["id"]].metadata = state["metadata"]
+            if(self.player.current_frame == len(self.player.frames) - 1):
+                actor.visibility = False
 
-            position = state["position"]
-            rotation = state['rotation']
+            self.objects[state["id"]].metadata = state["m"]
+
+            position = state['p']
+            rotation = state['r']
+
 
             transform = MatrixTransform.SetTransform(position, rotation)
             actor.SetUserTransform(transform)
-            
 
         self.plotter.render()
 

@@ -1,4 +1,4 @@
-import json
+from bson import loads
 
 class ReplayPlayer:
     def __init__(self):
@@ -11,8 +11,9 @@ class ReplayPlayer:
         self.direction: int = 1  # 1 = forward, -1 = backward
 
     def load_replay(self, filepath):
-        with open(filepath, 'r') as f:
-            data = json.load(f)
+        with open(filepath, 'rb') as f:
+            data = loads(f.read()) 
+
             self.frames = data.get("frames", [])
             self.objects = data.get("objects", [])
         self.current_frame = 0
