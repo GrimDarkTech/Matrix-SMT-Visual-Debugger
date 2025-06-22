@@ -1,5 +1,6 @@
 import sys
 
+
 import numpy as np
 import pyvista as pv
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
@@ -12,6 +13,14 @@ from Libraries.GeometryContainer import GeometryContainer
 from Libraries.ReplayPlayer import ReplayPlayer
 from Libraries.Transform import MatrixTransform
 
+import os
+if sys.platform == "linux":
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
+elif sys.platform == "win32":
+    os.environ["QT_QPA_PLATFORM"] = "windows"
+
+print("QT_QPA_PLATFORM:", os.environ.get("QT_QPA_PLATFORM"))
+print("Available plugins:", QApplication.libraryPaths())
 
 class MainWindow(QMainWindow):
     def __init__(self):
