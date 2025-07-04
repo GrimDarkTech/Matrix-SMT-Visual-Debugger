@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QTimer
 from pyvistaqt import QtInteractor
 
-from Libraries.GeometryContainer import GeometryContainer
+from Libraries.GeometryContainer import ActorContainer, VectorContainer
 from Libraries.ReplayPlayer import ReplayPlayer
 from Libraries.Transform import MatrixTransform
 
@@ -19,8 +19,9 @@ if sys.platform == "linux":
 elif sys.platform == "win32":
     os.environ["QT_QPA_PLATFORM"] = "windows"
 
-print("QT_QPA_PLATFORM:", os.environ.get("QT_QPA_PLATFORM"))
-print("Available plugins:", QApplication.libraryPaths())
+print("Matrix-SMT-Visual-Debugger")
+print("Current QT platform:", os.environ.get("QT_QPA_PLATFORM"))
+print("Available QT plugins:", QApplication.libraryPaths())
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -28,7 +29,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Matrix-SMT Visual Debugger")
         self.setGeometry(100, 100, 1280, 720)
 
-        self.objects: dict = {}
+        self.geometry: dict = {}
+        self.vectors: list = []
+        self.current_vector: int = 0
 
         self.player = ReplayPlayer()
 
@@ -41,6 +44,7 @@ class MainWindow(QMainWindow):
 
         self.object_list = QListWidget()
         self.object_list.itemClicked.connect(self.on_object_selected)
+        self.object_list.itemDoubleClicked.connect(self.on_object_double_clicked)
         left_panel.addWidget(QLabel("Objects:"))
         left_panel.addWidget(self.object_list)
 
@@ -172,7 +176,7 @@ class MainWindow(QMainWindow):
         """Update the list of objects in the scene."""
         self.object_list.clear()
 
-        for obj in self.objects.values():
+        for obj in self.geometry.values():
             if isinstance(obj.actor, pv.Actor):
                 self.object_list.addItem(obj.actor.name)
 
@@ -182,7 +186,7 @@ class MainWindow(QMainWindow):
         actor = self.plotter.actors[obj_name]
 
         container = None
-        for obj in self.objects.values():
+        for obj in self.geometry.values():
             if(obj_name == f"{obj.name}: id[{obj.id}]"):
                 container = obj
                 break
@@ -191,16 +195,40 @@ class MainWindow(QMainWindow):
         properties = {
             "Name": obj_name,
             "ID": str(container.id),
-            "Position": str(actor.position),
-            "Scale": str(actor.scale),
-            "Bounds": str(actor.bounds),
-            "Color": str(actor.prop.color),
+            "Position": "",
+            "x": str(container.position[0]),
+            "y": str(container.position[1]),
+            "z": str(container.position[2]),
+            "Rotation": "",
+            "rx": str(container.rotation[0]),
+            "ry": str(container.rotation[1]),
+            "rz": str(container.rotation[2]),
+            "rw": str(container.rotation[3]),
             "Visibility": str(actor.visibility),
             "Meta-data": container.metadata
         }
         
         text = "\n".join(f"{k}: {v}" for k, v in properties.items())
         self.properties_display.setText(text)
+
+    def on_object_double_clicked(self, item):
+        self.on_object_selected(item)
+
+        obj_name = item.text()
+
+        container = None
+        for obj in self.geometry.values():
+            if(obj_name == f"{obj.name}: id[{obj.id}]"):
+                container = obj
+                break
+                
+        if(container != None):
+            self.plotter.camera_position = [
+                (container.position[0], container.position[1] + 15, container.position[2] - 15),
+                (container.position[0], container.position[1], container.position[2]),
+                (0, 1, 0)
+            ]
+
 
     def open_animation_file(self):
         """Open a JSON animation file."""
@@ -241,6 +269,8 @@ class MainWindow(QMainWindow):
 
     def update_display(self):
         """Update the scene based on current animation frame."""
+        self.hide_debug_geometry()
+
         frame_data = self.player.get_current_frame_data()
         if not frame_data:
             return
@@ -254,7 +284,9 @@ class MainWindow(QMainWindow):
         # Apply transformations to objects
         states = frame_data.get("states", [])
         for state in states:
-            actor = self.objects[state["id"]].actor
+            actor = self.geometry[state["id"]].actor
+            self.geometry[state["id"]].position = state['p']
+            self.geometry[state["id"]].rotation = state['r']
 
             if(state["i"] == "i"):
                 actor.visibility = True
@@ -264,14 +296,31 @@ class MainWindow(QMainWindow):
             if(self.player.current_frame == len(self.player.frames) - 1):
                 actor.visibility = False
 
-            self.objects[state["id"]].metadata = state["m"]
+            self.geometry[state["id"]].metadata = state["m"]
 
             position = state['p']
             rotation = state['r']
 
 
-            transform = MatrixTransform.SetTransform(position, rotation)
+            transform = MatrixTransform.set_transform(position, rotation)
             actor.SetUserTransform(transform)
+
+        commands = frame_data.get("cmd", [])
+        for command in commands:
+            if(command["t"] == "v"):
+                vector = self.vectors[self.current_vector]
+                direction = [command.get("vx", 0), 
+                            command.get("vy", 1), 
+                            command.get("vz", 0)]
+                
+                position = [command.get("ox", 0), command.get("oy", 0), command.get("oz", 0)]
+                transform = MatrixTransform.set_transform_from_vector(position, direction) 
+                vector.actor.SetUserTransform(transform)
+
+                vector.actor.visibility = True
+
+                if(self.current_vector < len(self.vectors) - 1):
+                    self.current_vector += 1
 
         self.plotter.render()
 
@@ -290,7 +339,12 @@ class MainWindow(QMainWindow):
         for actor in self.plotter.actors.values():
             self.plotter.remove_actor(actor)
 
-        self.objects.clear()
+        self.geometry.clear()
+        origin = ActorContainer()
+        origin.id = -1
+        origin.name = "origin"
+        origin.position = [0, 0, 0]
+        origin.rotation = [0, 0, 0, 1]
 
         floor = pv.Plane(
             center=(0, 0, 0),
@@ -298,16 +352,21 @@ class MainWindow(QMainWindow):
             i_size=20,
             j_size=20
         )
-        self.plotter.add_mesh(
+        plane_actor = self.plotter.add_mesh(
             floor, 
             color='lightgray', 
             show_edges=True,
             edge_color='gray',
-            opacity=0.5
+            opacity=0.5,
+            name=f"{origin.name}: id[{origin.id}]"
         )
+
+        origin.actor = plane_actor
+
+        self.geometry[origin.id] = origin
         
         for geom in self.player.objects:
-            container = GeometryContainer()
+            container = ActorContainer()
             container.id = geom["id"]
             container.name = geom["name"]
             
@@ -346,10 +405,34 @@ class MainWindow(QMainWindow):
 
             actor.visibility = False
             
-            self.objects[container.id] = container
+            self.geometry[container.id] = container
         
         self.update_object_list()
 
+        for i in range(0, 50):
+            vector = VectorContainer()
+
+            arrow = pv.Arrow(
+                    start = (0, 0, 0), 
+                    direction = (0, 1, 0), 
+                    tip_length = 0.05,
+                    tip_radius = 0.07,
+                    tip_resolution = 2,
+                    shaft_radius = 0.01,
+                    shaft_resolution = 1,
+                )
+            vector.arrow = arrow
+
+            actor = self.plotter.add_mesh(arrow, color='red', opacity=1.0)
+            actor.visibility = False
+            vector.actor = actor
+
+            self.vectors.append(vector)
+
+    def hide_debug_geometry(self):
+        for vector in self.vectors:
+            vector.actor.visibility = False
+        self.current_vector = 0
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

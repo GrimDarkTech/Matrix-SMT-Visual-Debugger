@@ -1,9 +1,10 @@
 import vtk
-from math import atan2, asin, pi
+from math import atan2, acos, degrees
+import numpy as np
 
 class MatrixTransform:
     @staticmethod
-    def SetTransform(position: list, rotation: list):
+    def set_transform(position: list, rotation: list):
         transform = vtk.vtkTransform()
         transform.PostMultiply()
         
@@ -14,6 +15,49 @@ class MatrixTransform:
             transform.RotateWXYZ(angle_deg, *axis)
 
         transform.Translate(position)
+        return transform
+    
+    @staticmethod
+    def set_transform_from_vector(position: list, direction: list):
+        transform = vtk.vtkTransform()
+        transform.PostMultiply()
+
+        # Нормализуем вектор направления
+        direction = np.array(direction, dtype=np.float64)
+        magnitude = np.linalg.norm(direction)
+
+        transform.Scale(1, magnitude, 1)
+
+        if magnitude < 1e-6:
+            direction = np.array([0, 0, 1])  # Направление по умолчанию - вперед
+        else:
+            direction = direction / magnitude
+        
+        # Исходное направление объекта (по умолчанию смотрит вперед по Z)
+        default_direction = np.array([0, 1, 0])
+        
+        # Если направление уже совпадает с исходным, поворот не нужен
+        if np.allclose(direction, default_direction):
+            transform.Translate(position)
+            return transform
+        
+        # Вычисляем ось и угол поворота
+        axis = np.cross(default_direction, direction)
+        if np.linalg.norm(axis) < 1e-6:
+            # Направления противоположны (поворот на 180 градусов)
+            axis = np.array([0, 1, 0])  # Поворачиваем вокруг Y
+            angle_deg = 180
+        else:
+            axis = axis / np.linalg.norm(axis)
+            angle_rad = acos(np.clip(np.dot(default_direction, direction), -1, 1))
+            angle_deg = degrees(angle_rad)
+        
+        # Применяем поворот
+        transform.RotateWXYZ(angle_deg, *axis)
+        
+        # Применяем перемещение
+        transform.Translate(position)
+        
         return transform
     
     @staticmethod
