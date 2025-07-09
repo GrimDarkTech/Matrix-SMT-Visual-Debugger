@@ -11,4 +11,6 @@ class ActorContainer:
 class VectorContainer:
     def __init__(self):
         self.actor = None 
-        self.arrow = None
+class RayContainer:
+    def __init__(self):
+        self.actor = None 

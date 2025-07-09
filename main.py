@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QTimer
 from pyvistaqt import QtInteractor
 
-from Libraries.GeometryContainer import ActorContainer, VectorContainer
+from Libraries.GeometryContainer import ActorContainer, VectorContainer, RayContainer
 from Libraries.ReplayPlayer import ReplayPlayer
 from Libraries.Transform import MatrixTransform
 
@@ -30,8 +30,12 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1280, 720)
 
         self.geometry: dict = {}
+
         self.vectors: list = []
         self.current_vector: int = 0
+
+        self.rays: list = []
+        self.current_ray: int = 0
 
         self.player = ReplayPlayer()
 
@@ -269,8 +273,6 @@ class MainWindow(QMainWindow):
 
     def update_display(self):
         """Update the scene based on current animation frame."""
-        self.hide_debug_geometry()
-
         frame_data = self.player.get_current_frame_data()
         if not frame_data:
             return
@@ -305,7 +307,10 @@ class MainWindow(QMainWindow):
             transform = MatrixTransform.set_transform(position, rotation)
             actor.SetUserTransform(transform)
 
+        self.hide_debug_geometry()
+
         commands = frame_data.get("cmd", [])
+
         for command in commands:
             if(command["t"] == "v"):
                 vector = self.vectors[self.current_vector]
@@ -321,6 +326,21 @@ class MainWindow(QMainWindow):
 
                 if(self.current_vector < len(self.vectors) - 1):
                     self.current_vector += 1
+
+            elif(command["t"] == "r"):
+                ray = self.rays[self.current_ray]
+                end = [command.get("ex", 0), 
+                        command.get("ey", 1), 
+                        command.get("ez", 0)]
+                
+                start = [command.get("ox", 0), command.get("oy", 0), command.get("oz", 0)]
+                transform = MatrixTransform.set_transform_from_vector(start, end) 
+                ray.actor.SetUserTransform(transform)
+
+                ray.actor.visibility = True
+
+                if(self.current_ray < len(self.rays) - 1):
+                    self.current_ray += 1
 
         self.plotter.render()
 
@@ -409,6 +429,7 @@ class MainWindow(QMainWindow):
         
         self.update_object_list()
 
+        self.vectors.clear()
         for i in range(0, 50):
             vector = VectorContainer()
 
@@ -420,8 +441,7 @@ class MainWindow(QMainWindow):
                     tip_resolution = 2,
                     shaft_radius = 0.01,
                     shaft_resolution = 1,
-                )
-            vector.arrow = arrow
+            )
 
             actor = self.plotter.add_mesh(arrow, color='red', opacity=1.0)
             actor.visibility = False
@@ -429,10 +449,29 @@ class MainWindow(QMainWindow):
 
             self.vectors.append(vector)
 
+        self.rays.clear()
+        for i in range(0, 50):
+            ray = RayContainer()
+
+            line = pv.Line(
+                pointa = (0, 0, 0),
+                pointb = (0, 1, 0),
+                resolution = 1
+            )
+            actor = self.plotter.add_mesh(line, color = "blue")
+            actor.visibility = False
+            ray.actor = actor
+
+            self.rays.append(ray)
+
     def hide_debug_geometry(self):
         for vector in self.vectors:
             vector.actor.visibility = False
         self.current_vector = 0
+
+        for ray in self.rays:
+            ray.actor.visibility = False
+        self.current_ray = 0
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
