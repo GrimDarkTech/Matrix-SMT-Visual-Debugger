@@ -351,8 +351,8 @@ class MainWindow(QMainWindow):
             elif(command["t"] == "s"):
                 sphere = self.spheres[self.current_sphere]
                 position = [command.get("ox", 0), 
-                        command.get("ey", 0), 
-                        command.get("ez", 0)]
+                        command.get("oy", 0), 
+                        command.get("oz", 0)]
                 
                 radius = command.get("sr", 0)
                 transform = MatrixTransform.set_transform_with_scale(position, [0, 0, 0, 1], [radius, radius, radius]) 
