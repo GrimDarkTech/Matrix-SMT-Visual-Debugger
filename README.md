@@ -13,7 +13,7 @@ sudo apt install python3-venv python3-pip
 pip install -r requirements.txt
 ```
 
-Если есть сообщения об ошибке плагинов QT5, выполните их установку:
+Если на Linux есть сообщения об ошибке плагинов QT5, выполните их установку:
 
 ```bash
 sudo apt install libxcb-xinerama0
@@ -41,3 +41,6 @@ python3 main.py
 
 ### Откройте файл записи
 ![Открыть файл записи](/Documentation//Images/Open.png "Как окрыть файл записи")
+
+## Структура BSON-файлов
+Документация по стуктуре файлов записи представлена [здесь](/Documentation/RecordStructure.md)
