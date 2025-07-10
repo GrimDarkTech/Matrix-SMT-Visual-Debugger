@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QTimer
 from pyvistaqt import QtInteractor
 
-from Libraries.GeometryContainer import ActorContainer, VectorContainer, RayContainer
+from Libraries.GeometryContainer import ActorContainer, DebugContainer
 from Libraries.ReplayPlayer import ReplayPlayer
 from Libraries.Transform import MatrixTransform
 
@@ -36,6 +36,12 @@ class MainWindow(QMainWindow):
 
         self.rays: list = []
         self.current_ray: int = 0
+
+        self.spheres: list = []
+        self.current_sphere: int = 0
+
+        self.boxes: list = []
+        self.current_box: int = 0
 
         self.player = ReplayPlayer()
 
@@ -342,6 +348,46 @@ class MainWindow(QMainWindow):
                 if(self.current_ray < len(self.rays) - 1):
                     self.current_ray += 1
 
+            elif(command["t"] == "s"):
+                sphere = self.spheres[self.current_sphere]
+                position = [command.get("ox", 0), 
+                        command.get("ey", 0), 
+                        command.get("ez", 0)]
+                
+                radius = command.get("sr", 0)
+                transform = MatrixTransform.set_transform_with_scale(position, [0, 0, 0, 1], [radius, radius, radius]) 
+                sphere.actor.SetUserTransform(transform)
+
+                sphere.actor.visibility = True
+
+                if(self.current_sphere < len(self.spheres) - 1):
+                    self.current_sphere += 1
+
+            elif(command["t"] == "c"):
+                box = self.boxes[self.current_box]
+                
+                position = [command.get("ox", 0), 
+                        command.get("oy", 0), 
+                        command.get("oz", 0)]
+                
+                rotation = [command.get("rx", 0), 
+                        command.get("ry", 0), 
+                        command.get("rz", 0),
+                        command.get("rw", 1)]
+                
+                scale = [command.get("sx", 0) * 2, 
+                        command.get("sy", 0) * 2, 
+                        command.get("sz", 0) * 2]
+                
+                transform = MatrixTransform.set_transform_with_scale(position, rotation, scale) 
+                box.actor.SetUserTransform(transform)
+                
+                box.actor.prop.opacity = command.get("o", 1)
+                box.actor.visibility = True
+
+                if(self.current_box < len(self.boxes) - 1):
+                    self.current_box += 1
+
         self.plotter.render()
 
     def update_speed(self, value):
@@ -430,8 +476,12 @@ class MainWindow(QMainWindow):
         self.update_object_list()
 
         self.vectors.clear()
+        self.rays.clear()
+        self.boxes.clear()
+        self.spheres.clear()
+
         for i in range(0, 50):
-            vector = VectorContainer()
+            vector = DebugContainer()
 
             arrow = pv.Arrow(
                     start = (0, 0, 0), 
@@ -448,21 +498,50 @@ class MainWindow(QMainWindow):
             vector.actor = actor
 
             self.vectors.append(vector)
-
-        self.rays.clear()
-        for i in range(0, 50):
-            ray = RayContainer()
+        
+            ray = DebugContainer()
 
             line = pv.Line(
                 pointa = (0, 0, 0),
                 pointb = (0, 1, 0),
                 resolution = 1
             )
+
             actor = self.plotter.add_mesh(line, color = "blue")
             actor.visibility = False
             ray.actor = actor
 
             self.rays.append(ray)
+
+            sphere = DebugContainer()
+
+            sphere_mesh = pv.Sphere(
+                    radius = 1,
+                    center = (0, 0, 0)    
+            )
+            
+            actor = self.plotter.add_mesh(sphere_mesh, color='purple')
+            actor.visibility = False
+            sphere.actor = actor
+
+            self.spheres.append(sphere)
+
+            box = DebugContainer()
+
+            box_mesh = pv.Cube(
+                        center = (0, 0, 0),
+                        x_length = 1,
+                        y_length = 1,
+                        z_length = 1,
+                        
+            )
+            
+            actor = self.plotter.add_mesh(box_mesh, color='orange')
+            actor.visibility = False
+            box.actor = actor
+
+            self.boxes.append(box)
+
 
     def hide_debug_geometry(self):
         for vector in self.vectors:
@@ -472,6 +551,14 @@ class MainWindow(QMainWindow):
         for ray in self.rays:
             ray.actor.visibility = False
         self.current_ray = 0
+
+        for sphere in self.spheres:
+            sphere.actor.visibility = False
+        self.current_sphere = 0
+
+        for box in self.boxes:
+            box.actor.visibility = False
+        self.current_box = 0
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

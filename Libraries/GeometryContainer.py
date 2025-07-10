@@ -8,9 +8,6 @@ class ActorContainer:
         self.metadata: str = ""
         self.instance: int = 9
 
-class VectorContainer:
-    def __init__(self):
-        self.actor = None 
-class RayContainer:
+class DebugContainer:
     def __init__(self):
         self.actor = None 
