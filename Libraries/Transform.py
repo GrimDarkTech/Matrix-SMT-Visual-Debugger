@@ -39,6 +39,8 @@ class MatrixTransform:
         dir_vec = np.array(direction)
         magnitude = np.linalg.norm(dir_vec)
         if magnitude == 0:
+            transform.Scale(1, 0, 1)
+            transform.Translate(position)
             return transform
         
         transform.Scale(1, magnitude, 1)
